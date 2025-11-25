@@ -1,0 +1,25 @@
+# OS / editor cruft
+.DS_Store
+.vscode/
+
+# Build outputs
+solver
+mod_pde_omp
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated artifacts/results
+results/
+results_from_hpc/
+heat1d_result.png
+heat2d_result.png
+*.log
