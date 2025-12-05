@@ -1,14 +1,32 @@
-// Advection operators (first-order upwind) for 2D and 3D.
+// Advection operators (first-order upwind) for 1D/2D/3D.
 #pragma once
 #include <vector>
 #include <functional>
 #include <omp.h>
+#include "../grid_1d.hpp"
 #include "../grid_2d.hpp"
 #include "../grid_3d.hpp"
 
 inline double upwind_derivative(double vel, double forward, double center, double backward, double h) {
     return (vel >= 0.0) ? (center - backward) / h : (forward - center) / h;
 }
+
+struct Advection1D {
+    std::function<double(double, double)> u_vel; // velocity as f(x,t)
+    template <class Fun>
+    explicit Advection1D(Fun u) : u_vel(std::move(u)) {}
+
+    std::vector<double> apply(const Field1D& F, double t) const {
+        const auto& G = *F.g;
+        std::vector<double> adv(F.u.size(), 0.0);
+        #pragma omp parallel for schedule(static)
+        for (int i = 1; i < G.N; ++i) {
+            double vel = u_vel(G.x[i], t);
+            adv[i] = -vel * upwind_derivative(vel, F.u[i + 1], F.u[i], F.u[i - 1], G.dx);
+        }
+        return adv;
+    }
+};
 
 struct Advection2D {
     std::function<double(double, double, double)> u_vel; // x-velocity

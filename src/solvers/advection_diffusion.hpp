@@ -1,14 +1,40 @@
-// Advection-diffusion solvers (explicit) in 2D and 3D.
+// Advection-diffusion solvers (explicit) in 1D/2D/3D.
 #pragma once
 #include <algorithm>
 #include <cmath>
 #include <omp.h>
+#include "../grid_1d.hpp"
 #include "../grid_2d.hpp"
 #include "../grid_3d.hpp"
 #include "../operators/advection.hpp"
+#include "../operators/laplace_1d.hpp"
 #include "../operators/laplace_2d.hpp"
 #include "../operators/laplace_3d.hpp"
-#include "../operators/forcing.hpp"
+
+struct AdvectionDiffusion1DExplicit {
+    double a;
+    const Advection1D* A;
+    const Laplace1D* L;
+    const DirichletBC1D* bc;
+    AdvectionDiffusion1DExplicit(double a_, const Advection1D& adv,
+                                 const Laplace1D& lap, const DirichletBC1D& b)
+        : a(a_), A(&adv), L(&lap), bc(&b) {}
+
+    Field1D step(const Field1D& U, double t, double dt) const {
+        Field1D V = U;
+        bc->apply(V, t);
+        double diff_cfl = a * dt / L->dx2;
+        ensure(diff_cfl <= 0.5 + 1e-12, "Diffusion CFL violated in 1D");
+        auto adv = A->apply(V, t);
+        auto d2 = L->apply(V);
+        #pragma omp parallel for schedule(static)
+        for (int i = 1; i < V.g->N; ++i) {
+            V.u[i] = V.u[i] + dt * (adv[i] + a * d2[i]);
+        }
+        bc->apply(V, t + dt);
+        return V;
+    }
+};
 
 struct AdvectionDiffusion2DExplicit {
     double a;
@@ -49,16 +75,14 @@ struct AdvectionDiffusion2DExplicit {
     }
 };
 
-// Full climate: advection + diffusion + forcing in 3D.
-struct Climate3DExplicit {
+struct AdvectionDiffusion3DExplicit {
     double a;
     const Advection3D* A;
     const Laplace3D* L;
-    const Forcing3D* Q;
     const DirichletBC3D* bc;
-    Climate3DExplicit(double a_, const Advection3D& adv, const Laplace3D& lap,
-                      const Forcing3D& q, const DirichletBC3D& b)
-        : a(a_), A(&adv), L(&lap), Q(&q), bc(&b) {}
+    AdvectionDiffusion3DExplicit(double a_, const Advection3D& adv,
+                                 const Laplace3D& lap, const DirichletBC3D& b)
+        : a(a_), A(&adv), L(&lap), bc(&b) {}
 
     Field3D step(const Field3D& U, double t, double dt) const {
         Field3D V(*U.g);
@@ -82,13 +106,12 @@ struct Climate3DExplicit {
 
         auto adv = A->apply(V, t);
         auto d2 = L->apply(V);
-        auto q = Q->apply(V, t);
         #pragma omp parallel for collapse(3) schedule(static)
         for (int k = 1; k < G.Nz; ++k)
             for (int j = 1; j < G.Ny; ++j)
                 for (int i = 1; i < G.Nx; ++i) {
                     int id = V.id(i, j, k);
-                    V.u[id] = V.u[id] + dt * (adv[id] + a * d2[id] + q[id]);
+                    V.u[id] = V.u[id] + dt * (adv[id] + a * d2[id]);
                 }
         bc->apply(V);
         return V;
