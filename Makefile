@@ -18,7 +18,7 @@ else
 endif
 
 CXXFLAGS ?= -O3 -std=c++17
-CXXFLAGS += -Isrc $(OPENMP_FLAGS)
+CXXFLAGS += -std=c++17 -Isrc $(OPENMP_FLAGS)
 LDFLAGS += $(OPENMP_FLAGS) $(OPENMP_LIBS)
 
 solver: $(SRC)
