@@ -1,5 +1,13 @@
 CXX ?= g++
-SRC := main.cpp
+SRC := main.cpp \
+	src/utils/cli.cpp \
+	src/utils/geodata.cpp \
+	src/utils/ghosts.cpp \
+	src/utils/io.cpp \
+	src/utils/physics.cpp \
+	src/utils/stats.cpp \
+	src/utils/weather.cpp \
+	src/models/heat_models.cpp
 
 # Detect a usable OpenMP toolchain (clang on macOS needs extra flags).
 UNAME_S := $(shell uname -s)
